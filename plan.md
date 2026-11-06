@@ -48,14 +48,12 @@ Legacy course numbers (CECS 275, 282, 346, 278, 440) are mentioned as notes only
 
 ## 5. Features
 
-1. Audit: every requirement group with met / projected / missing, plus a C-or-better check and a 120-unit check.
-2. Track picker with per-track progress.
-3. Prerequisite flowchart (SVG), colored by status, click for details.
+1. Flowchart (main screen): swimlanes with credit bars, click a course to cycle its status, locks until prerequisites are completed, selecting a course highlights what it needs and unlocks, pan and zoom.
+2. Header: track chips (Software, Cyber, ML / AI) with live focus-unit counts, and a credits meter out of 120 that shows "All requirements met" when the audit passes.
+3. Semesters board: remaining courses grouped by term from the recommender, with an on-pace check. Click a course to jump to it in the flowchart.
 4. Professor catalogue: search, filter, source link per entry, ratings snapshot.
-5. How to finish: short written guide and common traps.
-6. Recommender (bottom): eligible courses, top picks with reasons, term-by-term plan, graduation pace check.
-7. Side feature: simple semester planner.
-8. Progress export and import (JSON).
+5. Guide: short written path and common traps.
+6. Menu: other credits (GE), unlock every course (transfer credit), export, import, reset.
 
 ## 6. Design
 
@@ -113,4 +111,8 @@ Sorted by area.
 - 2026-11-05: site built, 20 commits, live at https://bananatruck.github.io/CSULB-tracker/. Tests pass locally and in CI.
 - 2026-11-05: ratings looked up on RateMyProfessors for about 45 CECS instructors (school id 18846). Not yet written into the site.
   No match found for: Binh Le, Sahar Nikbakht, Sina Askari (0 ratings), Benyamin Haghi, Wei Wei, Daniel Commey (0 ratings), Dan Cregg (only a different-department match).
+- 2026-11-05: UI redesigned to a full-screen, flowchart-first app.
+  Click a course to cycle not taken, in progress, completed. Courses unlock when prerequisites are completed.
+  Six lanes (math and science, foundations, upper core, pick one, track, electives) each carry a credit bar; header shows credits out of 120.
+  Semesters board replaces the long recommender page. Professors and Guide kept as tabs. Settings (other credits, unlock all, export, import, reset) live in the menu.
 - Next: write ratings file, then recent-opinion summaries, then comments.
