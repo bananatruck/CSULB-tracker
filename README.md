@@ -18,7 +18,7 @@ python3 -m http.server 8000
 ## Test it
 
 ```bash
-node --test tests/
+node --test tests/*.test.js
 ```
 
 ## Where the data comes from
