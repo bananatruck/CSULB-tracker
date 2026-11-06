@@ -563,8 +563,30 @@
     };
   }
 
+  // How the 120 splits: major, GE that your major does not already cover, and free electives.
+  // Overlap is measured by pretending every required major course is done and seeing which GE requirements they fill.
+  function creditPlan(state) {
+    const pat = GE.patterns[state.gePattern] || GE.patterns['2025'];
+    const majorNeed = lanes(state).reduce((s, l) => s + l.need, 0);
+    const hypo = new Set([...R.lower, ...R.upperCore, 'PHYS 151', 'BIOL 200', ...R.pickOne.map((x) => x.options[0])]);
+    const asg = geAssign(pat, hypo, state);
+    let overlap = 0;
+    const covered = [];
+    for (const g of pat.groups) {
+      if (g.extra || g.overlap) continue;
+      const x = asg.get(g.key);
+      const prog = x ? x.ids.filter((id) => byId.has(id)) : [];
+      if (!prog.length) continue;
+      overlap += Math.min(sumUnits(prog), g.need);
+      covered.push({ group: g.name, ids: prog });
+    }
+    const geNeed = pat.lowerNeed + pat.upperNeed;
+    const geSeparate = Math.max(0, geNeed - overlap);
+    return { majorNeed, geNeed, overlap, geSeparate, free: Math.max(0, R.totalUnits - majorNeed - geSeparate), total: R.totalUnits, covered };
+  }
+
   const api = {
-    GE, geAudit, udUnits, unitsOfAny, isKnownCourse,
+    creditPlan, GE, geAudit, udUnits, unitsOfAny, isKnownCourse,
     DONE_DEFAULT, statusOf, cycleNext, missingText, flowCtx, lock, lanes,
     GRADES, isPassing, courses, byId, R, units, sumUnits, holds, leaves, exprText,
     emptyState, doneSet, ipSet, allocate, audit, trackProgress, eligible, blockers, recommend, termList, depthTo

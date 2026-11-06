@@ -1,8 +1,8 @@
-/* Tabs: one full-screen view at a time, chosen by the URL hash (#flow, #semesters, #profs, #guide). */
+/* Tabs: one full-screen view at a time, chosen by the URL hash (#flow, #electives, #ge, #semesters, #profs, #guide). */
 (function () {
   const CT = window.CT;
   const { $ } = CT;
-  const VIEWS = ['flow', 'semesters', 'profs', 'guide'];
+  const VIEWS = ['flow', 'electives', 'ge', 'semesters', 'profs', 'guide'];
 
   function show() {
     const h = location.hash.slice(1);

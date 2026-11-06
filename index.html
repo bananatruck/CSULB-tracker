@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/flow.css">
+<link rel="stylesheet" href="css/electives.css">
 <link rel="stylesheet" href="css/rec.css">
 <link rel="stylesheet" href="css/profs.css">
 <link rel="stylesheet" href="css/guide.css">
@@ -24,6 +25,8 @@
     <div class="credits" id="credits" role="status" aria-live="polite"></div>
     <nav class="tabs" id="tabs" aria-label="Views">
       <a href="#flow" data-tab="flow">Flow</a>
+      <a href="#electives" data-tab="electives">Electives</a>
+      <a href="#ge" data-tab="ge">GE</a>
       <a href="#semesters" data-tab="semesters">Semesters</a>
       <a href="#profs" data-tab="profs">Professors</a>
       <a href="#guide" data-tab="guide">Guide</a>
@@ -31,9 +34,6 @@
     <details class="menu" id="menu">
       <summary aria-label="Settings">&#8943;</summary>
       <div class="menu-panel">
-        <label class="field">GE and other credits
-          <input id="otherUnits" type="number" min="0" max="120" step="1" inputmode="numeric">
-        </label>
         <label class="check"><input type="checkbox" id="forceOpen"> Unlock every course (transfer credit)</label>
         <div class="actions">
           <button type="button" id="exportBtn" class="btn">Export</button>
@@ -42,7 +42,7 @@
           <button type="button" id="resetBtn" class="btn ghost">Reset</button>
         </div>
         <p id="setupMsg" class="msg" role="status" aria-live="polite"></p>
-        <p class="fine">Unofficial helper for the 2023-24 B.S. Computer Science catalog. Your ARR always wins. <a href="https://csulb.catalog.acalog.com/preview_program.php?catoid=8&amp;poid=3752" target="_blank" rel="noopener">Catalog</a> &middot; <a href="https://github.com/bananatruck/CSULB-tracker" target="_blank" rel="noopener">Source</a></p>
+        <p class="fine">Unofficial helper for the 2026-27 B.S. Computer Science catalog. Your ARR always wins. <a href="https://csulb.catalog.acalog.com/preview_program.php?catoid=12&amp;poid=6287" target="_blank" rel="noopener">Catalog</a> &middot; <a href="https://github.com/bananatruck/CSULB-tracker" target="_blank" rel="noopener">Source</a></p>
       </div>
     </details>
   </header>
@@ -62,6 +62,50 @@
         <button type="button" id="zIn" class="btn" aria-label="Zoom in">+</button>
       </div>
       <aside class="sheet" id="sheet" hidden aria-live="polite"></aside>
+    </section>
+
+    <section id="v-electives" class="view" data-view="electives" hidden>
+      <div class="pad">
+        <div class="card" id="creditPlan"></div>
+        <div id="elecBody" class="stack"></div>
+        <div class="card">
+          <label class="field">Other credits: transfer, AP, free electives
+            <input id="otherUnits" type="number" min="0" max="120" step="1" inputmode="numeric">
+          </label>
+          <p class="fine">Added to your total on top of the courses you mark. Use it for credit you earned outside CSULB or for courses not listed here.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="v-ge" class="view" data-view="ge" hidden>
+      <div class="pad">
+        <div class="card">
+          <div class="toolbar">
+            <label class="field">GE pattern
+              <select id="gePattern">
+                <option value="2025">Fall 2025 and later</option>
+                <option value="2021">Fall 2021 to Summer 2025</option>
+              </select>
+            </label>
+            <label class="check"><input type="checkbox" id="geCertified"> I have full GE certification (transfer)</label>
+          </div>
+          <p id="geInfo" class="fine"></p>
+        </div>
+        <div id="geSummary" class="minis"></div>
+        <div class="toolbar">
+          <label class="field grow">Search every GE course
+            <input id="geSearch" type="search" placeholder="Code or title, for example PHIL, music, statistics">
+          </label>
+          <label class="check"><input type="checkbox" id="geTaken"> Only courses I marked</label>
+        </div>
+        <div id="geBody" class="stack"></div>
+        <div class="card" id="gradCard">
+          <h3>Graduation checklist</h3>
+          <ul class="glist" id="gradList"></ul>
+          <p class="fine">Sources</p>
+          <ul class="refs" id="gradRefs"></ul>
+        </div>
+      </div>
     </section>
 
     <section id="v-semesters" class="view" data-view="semesters" hidden>
@@ -120,12 +164,15 @@
 
 <script src="js/data-courses.js"></script>
 <script src="js/data-professors.js"></script>
+<script src="js/data-ge.js"></script>
 <script src="js/logic.js"></script>
 <script src="js/core.js"></script>
+<script src="js/course-rows.js"></script>
 <script src="js/view-nav.js"></script>
 <script src="js/view-credits.js"></script>
 <script src="js/view-tracks.js"></script>
 <script src="js/view-flow.js"></script>
+<script src="js/view-electives.js"></script>
 <script src="js/view-rec.js"></script>
 <script src="js/view-profs.js"></script>
 <script src="js/view-guide.js"></script>

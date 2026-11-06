@@ -416,3 +416,19 @@ test('GE data: every Fall 2025+ requirement has courses, and program courses app
   assert.ok(ids('UD2/5').includes('CECS 491A'));
   assert.ok(ids('E', '2021').includes('ENGR 101'));
 });
+
+test('credit plan: the major covers 16 GE units under Fall 2025+, so about no free electives are needed', () => {
+  const plan = L.creditPlan(L.emptyState());
+  assert.equal(plan.majorNeed, 97);
+  assert.equal(plan.geNeed, 43);
+  assert.equal(plan.overlap, 16);
+  assert.equal(plan.geSeparate, 27);
+  assert.equal(plan.free, 0);
+  assert.ok(plan.covered.some((c) => c.ids.includes('ENGR 350')));
+});
+
+test('credit plan: the Fall 2021 pattern also lets CECS 105 and ENGR 101 and 102 cover category E', () => {
+  const plan = L.creditPlan(Object.assign(L.emptyState(), { gePattern: '2021' }));
+  const e = plan.covered.find((c) => c.group === 'Lifelong learning and self development');
+  assert.deepEqual(e.ids.sort(), ['CECS 105', 'ENGR 101', 'ENGR 102']);
+});
