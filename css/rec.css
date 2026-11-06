@@ -1,20 +1,15 @@
-/* recommender */
-.rec-verdict { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; padding: 16px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
-.rec-verdict.on { background: var(--ok-bg); border-color: var(--ok); }
-.rec-verdict.off { background: var(--bad-bg); border-color: var(--bad); }
-.rec-verdict strong { font-size: 1.1rem; }
-.rec-verdict span { color: var(--ink-2); font-size: 0.92rem; }
-.picks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.pick { display: grid; grid-template-columns: 1.6rem 6.2rem minmax(0, 1fr); gap: 4px 10px; align-items: baseline; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
-.pick .rank { font: 600 0.85rem var(--font-mono); color: var(--accent); }
-.pick .why { grid-column: 3; font-size: 0.85rem; color: var(--ink-2); }
-.terms { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-.term { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.term-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.term-head span { font: 500 0.8rem var(--font-mono); color: var(--ink-2); }
-.term ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; }
-.term li { display: grid; grid-template-columns: 6rem minmax(0, 1fr); gap: 8px; }
-.term.late { border-color: var(--bad); }
-.rec-note { font-size: 0.85rem; color: var(--ink-2); max-width: 70ch; }
-.rec-sec { display: flex; flex-direction: column; gap: 10px; }
-
+/* Semesters board: one column per term. */
+.board { display: flex; gap: 12px; align-items: flex-start; overflow-x: auto; padding-bottom: 8px; }
+.col { flex: 1 0 230px; max-width: 340px; display: flex; flex-direction: column; gap: 10px; padding: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.col.late { border-color: var(--warn); background: var(--warn-bg); }
+.col-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.col-h span { font: 500 0.78rem var(--font-mono); color: var(--ink-2); }
+.col ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cchip {
+  width: 100%; display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  font: inherit; font-size: 0.9rem; font-weight: 600; text-align: left; color: var(--ink); background: var(--surface-2);
+  border: 1px solid transparent; border-radius: 9px; padding: 9px 12px; cursor: pointer;
+}
+.cchip:hover { border-color: var(--accent-fill); }
+.cchip small { font: 500 0.75rem var(--font-mono); color: var(--ink-2); }
+.col .none { font-size: 0.85rem; color: var(--ink-2); }
