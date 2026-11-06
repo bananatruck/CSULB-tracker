@@ -34,7 +34,7 @@
   };
 
   // ---------- state helpers ----------
-  const emptyState = () => ({ track: '', done: {}, ip: [], otherUnits: 0, termUnits: 15, startTerm: 'Spring 2027', gradTerm: 'Spring 2027' });
+  const emptyState = () => ({ track: '', done: {}, ip: [], otherUnits: 0, termUnits: 15, startTerm: 'Spring 2027', gradTerm: 'Spring 2027', forceOpen: false });
   const doneSet = (state) => new Set(Object.keys(state.done).filter((id) => isPassing(state.done[id])));
   const ipSet = (state) => new Set(state.ip.filter((id) => !doneSet(state).has(id)));
 
@@ -428,7 +428,9 @@
     if (!holds(c.pre, ctx.done)) missing.push(missingText(c.pre, ctx.done));
     if (c.co && !holds(c.co, ctx.withIp)) missing.push(missingText(c.co, ctx.withIp));
     if (c.minUnits && ctx.state.otherUnits > 0 && ctx.unitsDone < c.minUnits) missing.push(c.minUnits + ' units');
-    return { open: missing.length === 0, missing, waiting: missing.length > 0 && holds(c.pre, ctx.withIp) };
+    // "waiting" means only in-progress prerequisites stand in the way, so it is not set for coreq-only or unit-rule blocks.
+    const waiting = missing.length > 0 && !!c.pre && !holds(c.pre, ctx.done) && holds(c.pre, ctx.withIp);
+    return { open: missing.length === 0, missing, waiting };
   }
 
   // The six rows of the flowchart, each with its own credit bar. Lane credits only count what the degree needs.

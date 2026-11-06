@@ -282,3 +282,15 @@ test('lanes: without a track the track and elective lanes stay empty', () => {
   assert.deepEqual(lanes.find((l) => l.key === 'track').ids, []);
   assert.equal(lanes.find((l) => l.key === 'track').have, 0);
 });
+
+test('lock: a course blocked only by a corequisite is locked, not waiting', () => {
+  const r = L.lock('PHYS 151', L.flowCtx(stateWith()));
+  assert.equal(r.open, false);
+  assert.equal(r.waiting, false);
+});
+
+test('lock: a course blocked only by the 60-unit rule is locked, not waiting', () => {
+  const r = L.lock('ENGR 350', L.flowCtx(stateWith([], [], { otherUnits: 10 })));
+  assert.equal(r.open, false);
+  assert.equal(r.waiting, false);
+});
