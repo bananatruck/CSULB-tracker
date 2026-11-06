@@ -90,7 +90,14 @@ Sorted by area.
 - Add instructor-to-course mapping from the schedule of classes.
 - Refresh ratings each semester and record the snapshot date.
 
+### Professors, opinions
+- Recent opinion: for each professor, a short summary of RateMyProfessors reviews from the past year, plus a note on how the pattern changed compared with older reviews.
+  Summaries are written in our own words, dated, and never copy review text.
+- Ratings snapshot for the remaining CECS instructors, plus a refresh each semester.
+
 ### Product
+- Community comments: let students add their own comments about a professor on this site, shown beside the official info and ratings.
+  Needs a small backend or a hosted comment service, moderation, and a clear "student opinion, not CSULB" label.
 - Drag-and-drop semester planner.
 - Shareable progress link.
 
@@ -103,3 +110,7 @@ Sorted by area.
 ## 11. Status log
 
 - 2026-11-05: plan agreed. Catalog, prerequisites and CECS faculty data collected. Building the site.
+- 2026-11-05: site built, 20 commits, live at https://bananatruck.github.io/CSULB-tracker/. Tests pass locally and in CI.
+- 2026-11-05: ratings looked up on RateMyProfessors for about 45 CECS instructors (school id 18846). Not yet written into the site.
+  No match found for: Binh Le, Sahar Nikbakht, Sina Askari (0 ratings), Benyamin Haghi, Wei Wei, Daniel Commey (0 ratings), Dan Cregg (only a different-department match).
+- Next: write ratings file, then recent-opinion summaries, then comments.
