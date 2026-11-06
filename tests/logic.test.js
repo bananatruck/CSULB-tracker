@@ -192,3 +192,93 @@ test('recommend: too many chained courses for the target is flagged as not on pa
   const r = L.recommend(s);
   assert.equal(r.onPace, false);
 });
+
+// ---------- flowchart: status, locks, lanes ----------
+const stateWith = (done = [], ip = [], extra = {}) => {
+  const s = L.emptyState();
+  done.forEach((id) => { s.done[id] = 'P'; });
+  s.ip = [...ip];
+  return Object.assign(s, extra);
+};
+
+test('grades: P counts as passed (C or better) in the audit', () => {
+  assert.equal(L.isPassing('P'), true);
+  assert.equal(L.isPassing('C-'), false);
+  assert.equal(L.doneSet(stateWith(['CECS 105'])).has('CECS 105'), true);
+});
+
+test('cycle: not taken, in progress, completed, then back to not taken', () => {
+  const s = stateWith();
+  assert.equal(L.cycleNext('CECS 105', s), 'ip');
+  const ip = stateWith([], ['CECS 105']);
+  assert.equal(L.cycleNext('CECS 105', ip), 'P');
+  const done = stateWith(['CECS 105']);
+  assert.equal(L.cycleNext('CECS 105', done), '');
+});
+
+test('cycle: a course with a grade below C goes to in progress next', () => {
+  const s = stateWith();
+  s.done['CECS 328'] = 'C-';
+  assert.equal(L.statusOf('CECS 328', s), 'fail');
+  assert.equal(L.cycleNext('CECS 328', s), 'ip');
+});
+
+test('lock: a course stays locked until its prerequisites are completed', () => {
+  const s = stateWith();
+  assert.equal(L.lock('CECS 274', L.flowCtx(s)).open, false);
+  assert.match(L.lock('CECS 274', L.flowCtx(s)).missing[0], /CECS 174/);
+  assert.equal(L.lock('CECS 274', L.flowCtx(stateWith(['CECS 174']))).open, true);
+});
+
+test('lock: an in-progress prerequisite does not open the next course, but is flagged as waiting', () => {
+  const s = stateWith([], ['CECS 174']);
+  const r = L.lock('CECS 274', L.flowCtx(s));
+  assert.equal(r.open, false);
+  assert.equal(r.waiting, true);
+});
+
+test('lock: a corequisite can be in progress', () => {
+  assert.equal(L.lock('CECS 174', L.flowCtx(stateWith())).open, false);
+  assert.equal(L.lock('CECS 174', L.flowCtx(stateWith([], ['MATH 122']))).open, true);
+});
+
+test('lock: "unlock all" opens everything for transfer credit', () => {
+  assert.equal(L.lock('CECS 491B', L.flowCtx(stateWith()), true).open, true);
+});
+
+test('lock: the 60-unit rule is ignored until other units are entered', () => {
+  assert.equal(L.lock('ENGR 350', L.flowCtx(stateWith())).open, true);
+  assert.equal(L.lock('ENGR 350', L.flowCtx(stateWith([], [], { otherUnits: 30 }))).open, false);
+  assert.equal(L.lock('ENGR 350', L.flowCtx(stateWith([], [], { otherUnits: 60 }))).open, true);
+});
+
+test('missingText: shows only what is still missing, with alternatives', () => {
+  assert.equal(L.missingText(byId.get('CECS 328').pre, new Set(['CECS 228'])), 'CECS 274');
+  assert.equal(L.missingText(byId.get('CECS 228').pre, new Set()), 'CECS 174 + MATH 122');
+});
+
+test('lanes: the six lanes need 97 major units in total', () => {
+  const lanes = L.lanes(stateWith([], [], { track: 'software' }));
+  assert.equal(lanes.length, 6);
+  assert.equal(lanes.reduce((s, l) => s + l.need, 0), 97);
+  assert.equal(lanes.reduce((s, l) => s + l.have, 0), 0);
+});
+
+test('lanes: a finished degree fills every lane', () => {
+  for (const track of Object.keys(R.tracks)) {
+    for (const l of L.lanes(finishedState(track))) assert.equal(l.have, l.need, track + ' ' + l.key);
+  }
+});
+
+test('lanes: in-progress courses raise projected but not done credits', () => {
+  const s = stateWith([], ['CECS 105', 'CECS 174'], { track: 'software' });
+  const lower = L.lanes(s).find((l) => l.key === 'lower');
+  assert.equal(lower.have, 0);
+  assert.equal(lower.proj, 4);
+});
+
+test('lanes: without a track the track and elective lanes stay empty', () => {
+  const lanes = L.lanes(stateWith());
+  assert.deepEqual(lanes.find((l) => l.key === 'track').ids, []);
+  assert.equal(lanes.find((l) => l.key === 'track').have, 0);
+});

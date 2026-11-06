@@ -4,8 +4,10 @@
   const { courses, requirements: R } = DATA;
   const byId = new Map(courses.map((c) => [c.id, c]));
 
-  const GRADES = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'CR', 'C-', 'D+', 'D', 'D-', 'F'];
-  const PASSING = new Set(['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'CR']);
+  // 'P' means "passed, C or better". Clicking a course to completed stores P, so no guessed letter grade.
+  const GRADES = ['P', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'CR', 'C-', 'D+', 'D', 'D-', 'F'];
+  const PASSING = new Set(['P', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'CR']);
+  const DONE_DEFAULT = 'P';
   const isPassing = (g) => PASSING.has(g);
 
   const units = (id) => (byId.get(id) ? byId.get(id).units : 0);
@@ -395,7 +397,68 @@
     return r;
   }
 
+  // ---------- flowchart: status, locks, lanes ----------
+  const statusOf = (id, state) => (doneSet(state).has(id) ? 'done' : ipSet(state).has(id) ? 'ip' : state.done[id] ? 'fail' : 'none');
+  // Click order: not taken, in progress, completed, not taken. Returns the value setCourse expects.
+  const cycleNext = (id, state) => {
+    const s = statusOf(id, state);
+    return s === 'none' || s === 'fail' ? 'ip' : s === 'ip' ? DONE_DEFAULT : '';
+  };
+
+  // What is still missing from an expression, as short text such as "CECS 228 + (CECS 274 or CECS 275)".
+  function missingText(expr, have) {
+    if (!expr || holds(expr, have)) return '';
+    if (typeof expr === 'string') return expr;
+    if (expr.all) return expr.all.filter((e) => !holds(e, have)).map((e) => (e.any ? '(' + missingText(e, have) + ')' : missingText(e, have))).join(' + ');
+    return expr.any.map((e) => missingText(e, have) || e).join(' or ');
+  }
+
+  // Build the sets once per render, then ask lock() for each course.
+  function flowCtx(state) {
+    const done = doneSet(state);
+    const withIp = new Set([...done, ...ipSet(state)]);
+    return { state, done, withIp, unitsDone: sumUnits([...done]) + Math.max(0, Number(state.otherUnits) || 0) };
+  }
+  // A course opens when every prerequisite is completed. Corequisites may be completed or in progress.
+  // The 60-unit rule is skipped until other units are entered, so an empty GE box does not lock ENGR 350.
+  function lock(id, ctx, force) {
+    const c = byId.get(id);
+    if (force) return { open: true, missing: [], waiting: false };
+    const missing = [];
+    if (!holds(c.pre, ctx.done)) missing.push(missingText(c.pre, ctx.done));
+    if (c.co && !holds(c.co, ctx.withIp)) missing.push(missingText(c.co, ctx.withIp));
+    if (c.minUnits && ctx.state.otherUnits > 0 && ctx.unitsDone < c.minUnits) missing.push(c.minUnits + ' units');
+    return { open: missing.length === 0, missing, waiting: missing.length > 0 && holds(c.pre, ctx.withIp) };
+  }
+
+  // The six rows of the flowchart, each with its own credit bar. Lane credits only count what the degree needs.
+  function lanes(state) {
+    const done = doneSet(state);
+    const haveAll = new Set([...done, ...ipSet(state)]);
+    const t = R.tracks[state.track];
+    const trackIds = t ? [t.required, ...t.options] : [];
+    const mathIds = ['MATH 122', 'MATH 123'];
+    const lowerIds = R.lower.filter((id) => !mathIds.includes(id));
+    const pickIds = R.pickOne.flatMap((p) => p.options);
+    const elecIds = R.sharedElectives.filter((id) => !trackIds.includes(id));
+    const u = (set, ids) => sumUnits(ids.filter((id) => set.has(id)));
+    const sci = (set) => Math.min(u(set, R.science.pool), R.science.minUnits);
+    const picks = (set) => R.pickOne.reduce((s, p) => s + (p.options.some((o) => set.has(o)) ? 3 : 0), 0);
+    const al = (set) => (t ? allocate(state.track, set) : { focusUnits: 0, electiveUnits: 0 });
+    const ad = al(done), ap = al(haveAll);
+    const row = (key, label, ids, need, have, proj) => ({ key, label, ids, need, have: Math.min(have, need), proj: Math.min(proj, need) });
+    return [
+      row('math', 'Math and science', [...mathIds, ...R.science.pool], 8 + R.science.minUnits, u(done, mathIds) + sci(done), u(haveAll, mathIds) + sci(haveAll)),
+      row('lower', 'Foundations', lowerIds, sumUnits(lowerIds), u(done, lowerIds), u(haveAll, lowerIds)),
+      row('upper', 'Upper core', R.upperCore, sumUnits(R.upperCore), u(done, R.upperCore), u(haveAll, R.upperCore)),
+      row('picks', 'Pick one of each', pickIds, 6, picks(done), picks(haveAll)),
+      row('track', t ? t.name : 'Your track', trackIds, R.focusUnits, ad.focusUnits, ap.focusUnits),
+      row('elec', 'Electives', elecIds, R.electiveUnits, ad.electiveUnits, ap.electiveUnits)
+    ];
+  }
+
   const api = {
+    DONE_DEFAULT, statusOf, cycleNext, missingText, flowCtx, lock, lanes,
     GRADES, isPassing, courses, byId, R, units, sumUnits, holds, leaves, exprText,
     emptyState, doneSet, ipSet, allocate, audit, trackProgress, eligible, blockers, recommend, termList, depthTo
   };
