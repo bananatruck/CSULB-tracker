@@ -1,41 +1,100 @@
-/* flowchart */
-.flow-tools { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; }
-.check { display: inline-flex; gap: 8px; align-items: center; font-size: 0.9rem; cursor: pointer; }
-.check input { width: 18px; height: 18px; accent-color: var(--accent-fill); }
-.legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.8rem; color: var(--ink-2); }
-.legend li { display: inline-flex; align-items: center; gap: 6px; }
-.lg { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid; display: inline-block; }
-.lg.st-ok { background: var(--ok-bg); border-color: var(--ok); }
-.lg.st-prog { background: var(--prog-bg); border-color: var(--prog); }
-.lg.st-ready { background: var(--surface); border-color: var(--accent); border-width: 2px; }
-.lg.st-locked { background: var(--surface-2); border-color: var(--line); }
-.scroller { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
-.scroller svg { display: block; }
-.edge { fill: none; stroke: var(--ink-2); stroke-width: 1.4; opacity: 0.55; }
+/* Flowchart canvas: dotted background, lane bands, state-colored nodes, floating legend, zoom and sheet. */
+.stage {
+  position: absolute; inset: 0; overflow: auto; cursor: grab;
+  background-color: var(--canvas);
+  background-image: radial-gradient(var(--dot) 1px, transparent 1px);
+  background-size: 22px 22px;
+  overscroll-behavior: contain;
+}
+.stage.panning { cursor: grabbing; user-select: none; }
+.chart { display: block; margin-inline: auto; padding-bottom: 84px; box-sizing: content-box; }
+
+/* lanes */
+.band { stroke: var(--line); stroke-width: 1; }
+.band.b0 { fill: var(--surface); fill-opacity: 0.88; }
+.band.b1 { fill: var(--band); fill-opacity: 0.88; }
+.lane-t { font: 600 13px var(--font-body); fill: var(--ink); }
+.lane-n { font: 500 11px var(--font-mono); fill: var(--ink-2); }
+.bar-bg { fill: var(--surface-2); }
+.bar-proj { fill: var(--prog); opacity: 0.4; }
+.bar-have { fill: var(--ok); }
+.hint-t { font: 400 12.5px var(--font-body); fill: var(--ink-2); }
+.tgl { cursor: pointer; }
+.tgl rect { fill: var(--surface-2); stroke: var(--line); }
+.tgl text { font: 500 11.5px var(--font-body); fill: var(--ink); text-anchor: middle; }
+.tgl:hover rect { stroke: var(--accent-fill); }
+.tgl:focus-visible { outline: none; }
+.tgl:focus-visible rect { stroke: var(--focus); stroke-width: 2; }
+
+/* edges: solid needs, dashed one-of, dotted alongside; green once the source course is completed */
+.edge { fill: none; stroke: var(--ink-2); stroke-width: 1.3; opacity: 0.38; transition: opacity 0.15s; }
 .edge.any { stroke-dasharray: 5 4; }
 .edge.co { stroke-dasharray: 1.5 4; }
-.edge.hi { stroke: var(--accent); opacity: 1; stroke-width: 2; }
-.edge.dim { opacity: 0.12; }
-.node { cursor: pointer; }
-.node rect { stroke-width: 1.5; }
-.node .t-code { font: 600 12px var(--font-mono); fill: var(--ink); }
-.node .t-mark { font: 600 11px var(--font-body); fill: var(--ink-2); }
-.node.st-ok rect { fill: var(--ok-bg); stroke: var(--ok); }
-.node.st-ok .t-mark { fill: var(--ok); }
-.node.st-prog rect { fill: var(--prog-bg); stroke: var(--prog); }
-.node.st-prog .t-mark { fill: var(--prog); }
-.node.st-ready rect { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
-.node.st-ready .t-mark { fill: var(--accent); }
-.node.st-locked rect { fill: var(--surface-2); stroke: var(--line); }
-.node.st-locked .t-code { fill: var(--ink-2); }
-.node.dim { opacity: 0.25; }
-.node.sel rect { stroke: var(--focus); stroke-width: 3; }
+.edge.e-done { stroke: var(--ok); opacity: 0.8; }
+.edge.hi { stroke: var(--accent); opacity: 1; stroke-width: 2.2; }
+.edge.dim { opacity: 0.07; }
+
+/* nodes */
+.node { cursor: pointer; transition: opacity 0.15s; }
+.node rect { stroke-width: 1.6; transition: fill 0.15s, stroke 0.15s; }
+.n-code { font: 600 12.5px var(--font-mono); fill: var(--ink); }
+.n-cr { font: 500 10.5px var(--font-mono); fill: var(--ink-2); }
+.n-glyph { font: 700 15px var(--font-body); text-anchor: middle; }
+.n-lock rect { fill: var(--ink-2); }
+.n-lock path { stroke: var(--ink-2); stroke-width: 1.8; }
+.node.n-open rect { fill: var(--surface); stroke: var(--accent-fill); stroke-width: 2.2; }
+.node.n-done rect { fill: var(--ok-bg); stroke: var(--ok); }
+.node.n-done .n-glyph { fill: var(--ok); }
+.node.n-ip rect { fill: var(--prog-bg); stroke: var(--prog); }
+.node.n-ip .n-glyph { fill: var(--prog); }
+.node.n-locked rect { fill: var(--surface-2); stroke: var(--line); }
+.node.n-locked .n-code { fill: var(--ink-2); }
+.node.n-wait rect { fill: var(--surface-2); stroke: var(--prog); stroke-dasharray: 4 3; }
+.node.n-wait .n-code { fill: var(--ink-2); }
+.node.n-wait .n-glyph { fill: var(--prog); }
+.node.n-fail rect { fill: var(--bad-bg); stroke: var(--bad); }
+.node.n-fail .n-glyph { fill: var(--bad); }
+.node.warn rect { stroke: var(--warn); stroke-dasharray: 4 3; }
+.node:hover rect { filter: brightness(0.96); }
+.node.dim { opacity: 0.2; }
+.node.sel rect { stroke: var(--focus); stroke-width: 3; stroke-dasharray: none; }
 .node:focus-visible { outline: none; }
 .node:focus-visible rect { stroke: var(--focus); stroke-width: 3; }
-.col-label { font: 500 10px var(--font-mono); fill: var(--ink-2); letter-spacing: 0.06em; text-transform: uppercase; }
-.detail { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
-.detail dl { margin: 0; display: grid; grid-template-columns: 8rem minmax(0, 1fr); gap: 4px 12px; font-size: 0.9rem; }
-.detail dt { color: var(--ink-2); }
-.detail dd { margin: 0; overflow-wrap: anywhere; }
-.detail .empty { color: var(--ink-2); }
 
+/* floating controls */
+.legend, .zoom {
+  position: absolute; bottom: 16px; z-index: 5; margin: 0; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
+}
+.legend { left: 16px; list-style: none; padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.78rem; color: var(--ink-2); max-width: calc(100% - 190px); }
+.legend li { display: inline-flex; align-items: center; gap: 6px; }
+.lg { width: 14px; height: 14px; border-radius: 4px; border: 2px solid; display: inline-block; }
+.lg.open { background: var(--surface); border-color: var(--accent-fill); }
+.lg.ip { background: var(--prog-bg); border-color: var(--prog); }
+.lg.done { background: var(--ok-bg); border-color: var(--ok); }
+.lg.locked { background: var(--surface-2); border-color: var(--line); }
+.zoom { right: 16px; display: flex; gap: 4px; padding: 5px; }
+.zoom .btn { min-width: 36px; padding: 6px 10px; }
+
+/* the sheet: one small card for the selected course */
+.sheet {
+  position: absolute; left: 50%; bottom: 76px; transform: translateX(-50%); z-index: 8;
+  width: min(520px, calc(100% - 32px)); display: flex; flex-direction: column; gap: 10px; padding: 14px 16px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow);
+}
+.sheet[hidden] { display: none; }
+.sh-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.sh-name { display: flex; flex-direction: column; min-width: 0; }
+.sh-code { font: 600 1.05rem var(--font-mono); }
+.sh-title { font-size: 0.9rem; color: var(--ink-2); }
+.sh-x { font: inherit; font-size: 1.4rem; line-height: 1; width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); cursor: pointer; }
+.sh-x:hover { background: var(--surface-2); color: var(--ink); }
+.sh-meta { font-size: 0.82rem; color: var(--ink-2); }
+.sh-lock { font-size: 0.85rem; font-weight: 500; color: var(--warn); }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; background: var(--surface-2); border-radius: 10px; }
+.seg button { font: inherit; font-size: 0.88rem; font-weight: 500; padding: 8px 6px; border: 0; border-radius: 7px; background: transparent; color: var(--ink-2); cursor: pointer; }
+.seg button:hover:not(:disabled) { color: var(--ink); }
+.seg button:disabled { opacity: 0.4; cursor: not-allowed; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18); }
+.sh-grade { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+.sh-link { font-size: 0.82rem; }
