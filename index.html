@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSULB-tracker</title>
+<meta name="description" content="Check your CSULB B.S. Computer Science requirements, see what blocks each course, and plan your last semesters.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2316181b'/%3E%3Cpath d='M9 17l5 5 9-12' fill='none' stroke='%23f5b800' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-in">
+    <a class="brand" href="#top" id="top"><span class="mark" aria-hidden="true">✓</span>CSULB-tracker</a>
+    <nav aria-label="Sections">
+      <a href="#audit">Audit</a>
+      <a href="#track">Track</a>
+      <a href="#flow">Flowchart</a>
+      <a href="#profs">Professors</a>
+      <a href="#guide">How to finish</a>
+      <a href="#recommend">Recommender</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="intro">
+    <p class="eyebrow">B.S. Computer Science &middot; 2023-24 catalog &middot; 120 units</p>
+    <h1>Am I done with my degree?</h1>
+    <p class="lede">Mark each course as done, in progress or not taken. The page checks every rule in the catalog, including the C-or-better rule, and lists what is still missing.</p>
+    <p class="notice">Unofficial helper. Your ARR (Academic Requirements Report) and your advisor always win.</p>
+    <div class="setup" id="setup">
+      <label class="field">Other units earned
+        <span class="hint">GE, transfer and electives outside the major</span>
+        <input id="otherUnits" type="number" min="0" max="120" step="1" inputmode="numeric">
+      </label>
+      <div class="actions">
+        <button type="button" id="exportBtn" class="btn">Export progress</button>
+        <label class="btn" for="importFile">Import</label>
+        <input id="importFile" type="file" accept="application/json" hidden>
+        <button type="button" id="resetBtn" class="btn ghost">Reset</button>
+      </div>
+      <p id="setupMsg" class="msg" role="status" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <section id="audit" aria-labelledby="auditH">
+    <h2 id="auditH">Degree audit</h2>
+    <div id="verdict" class="verdict" role="status" aria-live="polite"></div>
+    <div id="meters" class="meters"></div>
+    <div id="needs"></div>
+    <div id="groups" class="groups"></div>
+  </section>
+
+  <section id="track" aria-labelledby="trackH">
+    <h2 id="trackH">Your track</h2>
+    <p class="sub">The track is the focus area inside your 18 elective units: 12 units from one focus area plus 6 units from the shared list. Pick one and the audit follows it.</p>
+    <div id="tracks" class="tracks"></div>
+  </section>
+
+  <section id="flow" aria-labelledby="flowH">
+    <h2 id="flowH">Prerequisite flowchart</h2>
+    <p class="sub">Read left to right. Select a course to see what it needs and what it unlocks.</p>
+    <div class="flow-tools">
+      <label class="check"><input type="checkbox" id="allElectives"> Show all electives</label>
+      <ul class="legend" aria-label="Legend">
+        <li><i class="lg st-ok"></i>Done</li>
+        <li><i class="lg st-prog"></i>In progress</li>
+        <li><i class="lg st-ready"></i>Ready to take</li>
+        <li><i class="lg st-locked"></i>Locked</li>
+        <li><svg width="30" height="8" aria-hidden="true"><line x1="0" y1="4" x2="30" y2="4" stroke="currentColor" stroke-width="1.6"/></svg>needs</li>
+        <li><svg width="30" height="8" aria-hidden="true"><line x1="0" y1="4" x2="30" y2="4" stroke="currentColor" stroke-width="1.6" stroke-dasharray="4 3"/></svg>or alternative</li>
+        <li><svg width="30" height="8" aria-hidden="true"><line x1="0" y1="4" x2="30" y2="4" stroke="currentColor" stroke-width="1.6" stroke-dasharray="1.5 3"/></svg>alongside</li>
+      </ul>
+    </div>
+    <div class="scroller" id="chartWrap" tabindex="0" aria-label="Prerequisite flowchart, scrollable"></div>
+    <div id="detail" class="detail" aria-live="polite"></div>
+  </section>
+
+  <section id="profs" aria-labelledby="profsH">
+    <h2 id="profsH">CECS professors</h2>
+    <p class="sub">Names, titles and office hours come from the department pages at csulb.edu. Ratings are a dated snapshot from student reviews on RateMyProfessors and can be out of date.</p>
+    <div class="filters">
+      <label class="field grow">Search
+        <input id="profSearch" type="search" placeholder="Name, interest or course">
+      </label>
+      <label class="field">Show
+        <select id="profKind">
+          <option value="all">Everyone</option>
+          <option value="Faculty">Faculty</option>
+          <option value="Lecturer">Lecturers</option>
+          <option value="advisor">Advisors</option>
+          <option value="rated">Has a rating</option>
+        </select>
+      </label>
+      <label class="field">Sort
+        <select id="profSort">
+          <option value="name">Name</option>
+          <option value="rating">Rating, high to low</option>
+        </select>
+      </label>
+    </div>
+    <p id="profCount" class="count"></p>
+    <div id="profGrid" class="pgrid"></div>
+  </section>
+
+  <section id="guide" aria-labelledby="guideH">
+    <h2 id="guideH">How to finish the degree</h2>
+    <div id="guideBody" class="guide"></div>
+  </section>
+
+  <section id="recommend" aria-labelledby="recH">
+    <h2 id="recH">What to take next</h2>
+    <p class="sub">Uses your progress, your track, your unit load and your graduation term. Only suggests courses whose prerequisites you will have finished.</p>
+    <div class="rec-controls">
+      <label class="field">Units per term
+        <select id="termUnits"></select>
+      </label>
+      <label class="field">Planning from
+        <select id="startTerm"></select>
+      </label>
+      <label class="field">Graduating
+        <select id="gradTerm"></select>
+      </label>
+    </div>
+    <div id="recOut"></div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>Degree rules and prerequisites: <a href="https://csulb.catalog.acalog.com/preview_program.php?catoid=8&amp;poid=3752" target="_blank" rel="noopener">CSULB 2023-24 catalog, Computer Science B.S.</a> Each course links to its own catalog page.</p>
+    <p>Professors: <a href="https://www.csulb.edu/college-of-engineering/computer-engineering-computer-science/faculty-staff" target="_blank" rel="noopener">CECS faculty and staff</a> and <a href="https://www.csulb.edu/college-of-engineering/computer-engineering-computer-science/faculty-office-hours" target="_blank" rel="noopener">faculty office hours</a>. Class times: <a href="https://www.csulb.edu/student-records/schedule-of-classes" target="_blank" rel="noopener">Schedule of Classes</a>.</p>
+    <p>Not affiliated with CSULB. Your progress is stored only in this browser. <a href="https://github.com/bananatruck/CSULB-tracker" target="_blank" rel="noopener">Source on GitHub</a>.</p>
+  </div>
+</footer>
+
+<script src="js/data-courses.js"></script>
+<script src="js/data-professors.js"></script>
+<script src="js/logic.js"></script>
+</body>
+</html>
