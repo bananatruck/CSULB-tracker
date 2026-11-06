@@ -1,6 +1,7 @@
 /* Pure logic: audit, eligibility, recommender. No DOM access, so it runs in Node tests too. */
 (function (root) {
   const DATA = typeof module !== 'undefined' && module.exports ? require('./data-courses.js') : root.CSULB_DATA;
+  const GE = typeof module !== 'undefined' && module.exports ? require('./data-ge.js') : root.CSULB_GE;
   const { courses, requirements: R } = DATA;
   const byId = new Map(courses.map((c) => [c.id, c]));
 
@@ -34,7 +35,7 @@
   };
 
   // ---------- state helpers ----------
-  const emptyState = () => ({ track: '', done: {}, ip: [], otherUnits: 0, termUnits: 15, startTerm: 'Spring 2027', gradTerm: 'Spring 2027', forceOpen: false });
+  const emptyState = () => ({ track: '', done: {}, ip: [], otherUnits: 0, termUnits: 15, startTerm: 'Spring 2027', gradTerm: 'Spring 2027', forceOpen: false, gePattern: '2025', geCertified: false, units: {}, checks: {} });
   const doneSet = (state) => new Set(Object.keys(state.done).filter((id) => isPassing(state.done[id])));
   const ipSet = (state) => new Set(state.ip.filter((id) => !doneSet(state).has(id)));
 
@@ -162,8 +163,11 @@
     // Units
     const majorUnits = sumUnits([...done]);
     const ipUnits = sumUnits([...ip]);
+    // GE and free-elective courses outside the major program count toward the 120 once, at their own credits.
+    const outside = (set) => [...set].filter((id) => !byId.has(id)).reduce((s, id) => s + unitsOfAny(id, state), 0);
+    const geOnly = outside(done), geIp = outside(ip);
     const other = Math.max(0, Number(state.otherUnits) || 0);
-    const total = { have: majorUnits + other, projected: majorUnits + ipUnits + other, need: R.totalUnits, majorUnits, ipUnits, other };
+    const total = { have: majorUnits + geOnly + other, projected: majorUnits + ipUnits + geOnly + geIp + other, need: R.totalUnits, majorUnits, ipUnits, geOnly, geIp, other };
 
     const totalGroup = {
       key: 'units', title: 'Total units (' + R.totalUnits + ')', note: 'Program courses plus your other units (GE, transfer, electives).',
@@ -172,10 +176,28 @@
     };
     groups.push(totalGroup);
 
+    const ge = geAudit(state);
+    groups.push({
+      key: 'ge', title: 'General Education (' + ge.pattern.label + ')', note: ge.pattern.groups.length + ' requirements', items: [], status: ge.status,
+      progress: { have: ge.have, projected: ge.proj, need: ge.need }, need: ge.status === 'met' ? '' : ge.missingText
+    });
+    const ud = udUnits(state);
+    groups.push({
+      key: 'ud', title: 'Upper-division units (' + ud.need + ')', note: 'Courses numbered 300 to 499.', items: [],
+      status: ud.have >= ud.need ? 'met' : ud.proj >= ud.need ? 'projected' : 'missing', progress: ud,
+      need: ud.proj >= ud.need ? '' : (ud.need - ud.proj) + ' more upper-division units.'
+    });
+    const checks = state.checks || {};
+    const grad = ['res', 'gpa', 'gwar'].filter((k) => !checks[k]);
+    groups.push({
+      key: 'grad', title: 'Residency, GPA and GWAR', note: 'Confirm each on your ARR.', items: [],
+      status: grad.length ? 'missing' : 'met', need: grad.length ? 'Confirm: ' + grad.map((k) => ({ res: 'residency', gpa: '2.0 GPA', gwar: 'GWAR' }[k])).join(', ') + '.' : ''
+    });
+
     const overall = groups.every((g) => g.status === 'met') && !gradeIssues.length ? 'met'
       : groups.every((g) => g.status === 'met' || g.status === 'projected') && !gradeIssues.length ? 'projected' : 'missing';
     const needsTrack = !R.tracks[trackKey];
-    return { groups, gate, gateOk: gate.every((i) => i.status === 'met'), gradeIssues, total, track, overall: needsTrack && overall !== 'missing' ? 'missing' : overall, needsTrack };
+    return { groups, gate, gateOk: gate.every((i) => i.status === 'met'), gradeIssues, total, track, ge, ud, overall: needsTrack && overall !== 'missing' ? 'missing' : overall, needsTrack };
   }
 
   // Which track has the most progress? Used to hint a choice when none is picked.
@@ -457,7 +479,92 @@
     ];
   }
 
+
+  // ---------- credits for any course, upper-division units, General Education ----------
+  // Program courses use their catalog units. Other courses use a credit the user set, else the GE list default, else 3.
+  function unitsOfAny(id, state) {
+    if (byId.has(id)) return units(id);
+    const set = state && state.units && Number(state.units[id]);
+    if (set) return set;
+    const g = GE.byId.get(id);
+    return g ? g.units : 3;
+  }
+  const isKnownCourse = (id) => byId.has(id) || GE.byId.has(id);
+
+  function udUnits(state) {
+    const done = doneSet(state), ip = ipSet(state);
+    const sum = (set) => [...set].filter((id) => GE.level(id) >= 300).reduce((s, id) => s + unitsOfAny(id, state), 0);
+    const have = sum(done);
+    return { have, proj: have + sum(ip), need: 40 };
+  }
+
+  // Give each course to at most one requirement, scarcest requirement first, so one course never fills two.
+  function geAssign(pat, set, state) {
+    const used = new Set();
+    const res = new Map();
+    const cand = (g) => g.courses.filter((c) => set.has(c.id));
+    const order = pat.groups.filter((g) => !g.extra).map((g) => ({ g, n: cand(g).length })).sort((a, b) => a.n - b.n).map((x) => x.g);
+    for (const g of order) {
+      const cs = cand(g).filter((c) => !used.has(c.id));
+      const picked = [];
+      let u = 0;
+      const add = (c) => { picked.push(c.id); u += unitsOfAny(c.id, state); };
+      let ok = true;
+      if (g.science) {
+        const lab = (c) => /with lab/.test(c.tag || '');
+        const best = (arr) => arr.slice().sort((a, b) => Number(lab(b)) - Number(lab(a)) || unitsOfAny(b.id, state) - unitsOfAny(a.id, state))[0];
+        const pa = best(cs.filter((c) => /^Physical/.test(c.tag || '')));
+        const pb = best(cs.filter((c) => /^Biological/.test(c.tag || '')));
+        [pa, pb].filter(Boolean).forEach(add);
+        let hasLab = [pa, pb].some((c) => c && lab(c));
+        if (!hasLab) {
+          const only = cs.find((c) => c.tag === 'Lab only');
+          if (only) { add(only); hasLab = true; }
+        }
+        ok = !!pa && !!pb && hasLab;
+      }
+      for (const c of cs) {
+        if (u >= g.need) break;
+        if (!picked.includes(c.id)) add(c);
+      }
+      if (g.science) ok = ok && u >= g.need;
+      picked.forEach((id) => used.add(id));
+      res.set(g.key, { ids: picked, units: u, ok: ok && u >= g.need });
+    }
+    return res;
+  }
+
+  function geAudit(state) {
+    const pat = GE.patterns[state.gePattern] || GE.patterns['2025'];
+    const done = doneSet(state);
+    const haveAll = new Set([...done, ...ipSet(state)]);
+    const certified = !!state.geCertified;
+    const a = geAssign(pat, done, state), b = geAssign(pat, haveAll, state);
+    const rows = pat.groups.map((g) => {
+      const x = a.get(g.key) || { ids: [], units: 0, ok: false }, y = b.get(g.key) || { ids: [], units: 0, ok: false };
+      const counted = !g.extra;
+      return {
+        key: g.key, name: g.name, level: g.level, need: g.need, extra: !!g.extra, overlap: !!g.overlap,
+        have: certified && counted ? g.need : Math.min(x.units, g.need), proj: certified && counted ? g.need : Math.min(y.units, g.need),
+        taken: x.ids, taking: y.ids.filter((id) => !x.ids.includes(id)),
+        met: certified ? counted : counted && x.ok, projMet: certified ? counted : counted && y.ok
+      };
+    });
+    const sumOf = (lvl, f) => rows.filter((r) => r.level === lvl && !r.extra && !r.overlap).reduce((s, r) => s + r[f], 0);
+    const live = rows.filter((r) => !r.extra);
+    const status = live.every((r) => r.met) ? 'met' : live.every((r) => r.projMet) ? 'projected' : 'missing';
+    const lowerNeed = sumOf('lower', 'need'), upperNeed = sumOf('upper', 'need');
+    return {
+      pattern: pat, rows, certified, status,
+      lowerHave: sumOf('lower', 'have'), lowerProj: sumOf('lower', 'proj'), lowerNeed,
+      upperHave: sumOf('upper', 'have'), upperProj: sumOf('upper', 'proj'), upperNeed,
+      have: sumOf('lower', 'have') + sumOf('upper', 'have'), proj: sumOf('lower', 'proj') + sumOf('upper', 'proj'), need: lowerNeed + upperNeed,
+      missingText: live.filter((r) => !r.projMet).map((r) => r.name).join(', ') || ''
+    };
+  }
+
   const api = {
+    GE, geAudit, udUnits, unitsOfAny, isKnownCourse,
     DONE_DEFAULT, statusOf, cycleNext, missingText, flowCtx, lock, lanes,
     GRADES, isPassing, courses, byId, R, units, sumUnits, holds, leaves, exprText,
     emptyState, doneSet, ipSet, allocate, audit, trackProgress, eligible, blockers, recommend, termList, depthTo

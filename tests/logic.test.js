@@ -16,6 +16,8 @@ const finishedState = (track = 'software') => {
   ids.forEach((id) => { s.done[id] = 'B'; });
   const major = L.sumUnits([...ids]);
   s.otherUnits = R.totalUnits - major;
+  s.geCertified = true; // GE is covered by its own tests below
+  s.checks = { res: true, gpa: true, gwar: true };
   return s;
 };
 
@@ -320,4 +322,97 @@ test('2026-27: CECS 491A needs CECS 343 first, with CECS 328 and ENGR 350 alongs
   const c = byId.get('CECS 491A');
   assert.equal(L.exprText(c.pre), 'CECS 343');
   assert.equal(L.exprText(c.co), 'CECS 328 and ENGR 350');
+});
+
+// ---------- General Education and graduation requirements ----------
+const geRow = (a, key) => a.ge.rows.find((r) => r.key === key);
+const withGe = (done, extra = {}) => Object.assign(stateWith(done), extra);
+
+test('GE: the Fall 2025+ pattern is 34 lower plus 9 upper units, and the 2021 pattern is 40 plus 9', () => {
+  const a = L.geAudit(L.emptyState());
+  assert.equal(a.lowerNeed, 34);
+  assert.equal(a.upperNeed, 9);
+  assert.equal(a.need, 43);
+  const b = L.geAudit(Object.assign(L.emptyState(), { gePattern: '2021' }));
+  assert.equal(b.lowerNeed, 40);
+  assert.equal(b.upperNeed, 9);
+  assert.equal(b.status, 'missing');
+});
+
+test('GE: major courses double-count (MATH 122, ENGR 350, CECS 491A)', () => {
+  const a = L.audit(withGe(['MATH 122', 'ENGR 350', 'CECS 491A']));
+  assert.equal(geRow(a, '2').met, true);
+  assert.equal(geRow(a, 'UD3').met, true);
+  assert.equal(geRow(a, 'UD2/5').met, true);
+});
+
+test('GE: PHYS 151 plus BIOL 200 meets the 7-unit science rule', () => {
+  const a = L.audit(withGe(['PHYS 151', 'BIOL 200']));
+  assert.equal(geRow(a, '5').met, true);
+  assert.equal(geRow(a, '5').have, 7);
+});
+
+test('GE: two physical science courses do not meet the science rule', () => {
+  const a = L.audit(withGe(['PHYS 151', 'CHEM 111A']));
+  assert.equal(geRow(a, '5').met, false);
+});
+
+test('GE: one course fills one requirement (Fall 2021 C1 and C3 need two different arts courses)', () => {
+  const one = L.audit(withGe(['AFRS 155'], { gePattern: '2021' }));
+  assert.equal(geRow(one, 'C1').met || geRow(one, 'C3').met, true);
+  assert.equal(geRow(one, 'C1').met && geRow(one, 'C3').met, false);
+  const two = L.audit(withGe(['AFRS 155', 'AFRS 160'], { gePattern: '2021' }));
+  assert.equal(geRow(two, 'C1').met && geRow(two, 'C3').met, true);
+});
+
+test('GE: CECS 105, ENGR 101 and ENGR 102 together meet Category E (1 + 1 + 1 units)', () => {
+  const a = L.audit(withGe(['CECS 105', 'ENGR 101', 'ENGR 102'], { gePattern: '2021' }));
+  assert.equal(geRow(a, 'E').met, true);
+  const two = L.audit(withGe(['CECS 105', 'ENGR 101'], { gePattern: '2021' }));
+  assert.equal(geRow(two, 'E').met, false);
+});
+
+test('GE: in-progress courses are projected, not met', () => {
+  const s = stateWith([], ['COMM 130']);
+  const a = L.audit(s);
+  assert.equal(geRow(a, '1C').met, false);
+  assert.equal(geRow(a, '1C').projMet, true);
+});
+
+test('GE: certification marks every requirement met', () => {
+  const a = L.audit(Object.assign(L.emptyState(), { geCertified: true }));
+  assert.equal(a.ge.status, 'met');
+  assert.equal(a.ge.have, 43);
+});
+
+test('credits: a GE course outside the major counts at its credits, once, and the credit can be changed', () => {
+  assert.equal(L.audit(stateWith(['AFRS 155'])).total.have, 3);
+  const s = stateWith(['AFRS 155']);
+  s.units['AFRS 155'] = 4;
+  assert.equal(L.audit(s).total.have, 4);
+  assert.equal(L.audit(stateWith(['MATH 122'])).total.have, 4);
+});
+
+test('upper-division units: counts courses numbered 300 to 499, from the major and from GE', () => {
+  assert.equal(L.udUnits(stateWith(['CECS 105', 'CECS 325', 'ENGR 350'])).have, 6);
+  assert.equal(L.udUnits(stateWith(['PHIL 402'])).have, 3);
+});
+
+test('audit: a finished degree needs GE and the residency, GPA and GWAR confirmations', () => {
+  assert.equal(L.audit(finishedState()).overall, 'met');
+  const s = finishedState();
+  s.geCertified = false;
+  assert.notEqual(L.audit(s).overall, 'met');
+  const t = finishedState();
+  t.checks.gwar = false;
+  assert.notEqual(L.audit(t).overall, 'met');
+});
+
+test('GE data: every Fall 2025+ requirement has courses, and program courses appear where expected', () => {
+  for (const g of L.GE.patterns['2025'].groups) assert.ok(g.courses.length > 0, g.key);
+  const ids = (key, pat = '2025') => L.GE.patterns[pat].groups.find((g) => g.key === key).courses.map((c) => c.id);
+  assert.ok(ids('2').includes('MATH 122') && ids('2').includes('MATH 123'));
+  assert.ok(ids('UD3').includes('ENGR 350'));
+  assert.ok(ids('UD2/5').includes('CECS 491A'));
+  assert.ok(ids('E', '2021').includes('ENGR 101'));
 });

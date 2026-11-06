@@ -17,14 +17,18 @@
     const s = L.emptyState();
     if (!raw || typeof raw !== 'object') return s;
     if (R.tracks[raw.track]) s.track = raw.track;
-    if (raw.done && typeof raw.done === 'object') for (const [id, g] of Object.entries(raw.done)) if (byId.has(id) && GRADES.includes(g)) s.done[id] = g;
-    if (Array.isArray(raw.ip)) s.ip = [...new Set(raw.ip.filter((id) => byId.has(id) && !s.done[id]))];
+    if (raw.done && typeof raw.done === 'object') for (const [id, g] of Object.entries(raw.done)) if (L.isKnownCourse(id) && GRADES.includes(g)) s.done[id] = g;
+    if (Array.isArray(raw.ip)) s.ip = [...new Set(raw.ip.filter((id) => L.isKnownCourse(id) && !s.done[id]))];
     const ou = Number(raw.otherUnits);
     if (Number.isFinite(ou)) s.otherUnits = Math.min(120, Math.max(0, Math.round(ou)));
     if (UNIT_CHOICES.includes(Number(raw.termUnits))) s.termUnits = Number(raw.termUnits);
     if (TERMS.includes(raw.startTerm)) s.startTerm = raw.startTerm;
     if (TERMS.includes(raw.gradTerm)) s.gradTerm = raw.gradTerm;
     if (raw.forceOpen === true) s.forceOpen = true;
+    if (L.GE.patterns[raw.gePattern]) s.gePattern = raw.gePattern;
+    if (raw.geCertified === true) s.geCertified = true;
+    if (raw.units && typeof raw.units === 'object') for (const [id, u] of Object.entries(raw.units)) if (L.isKnownCourse(id) && !byId.has(id) && Number(u) >= 1 && Number(u) <= 6) s.units[id] = Math.round(Number(u));
+    if (raw.checks && typeof raw.checks === 'object') ['res', 'gpa', 'gwar'].forEach((k) => { if (raw.checks[k] === true) s.checks[k] = true; });
     return s;
   }
   function load() {
