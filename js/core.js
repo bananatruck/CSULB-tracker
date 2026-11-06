@@ -24,6 +24,7 @@
     if (UNIT_CHOICES.includes(Number(raw.termUnits))) s.termUnits = Number(raw.termUnits);
     if (TERMS.includes(raw.startTerm)) s.startTerm = raw.startTerm;
     if (TERMS.includes(raw.gradTerm)) s.gradTerm = raw.gradTerm;
+    if (raw.forceOpen === true) s.forceOpen = true;
     return s;
   }
   function load() {
@@ -42,36 +43,11 @@
   }
 
   // ---------- helpers ----------
-  const stLabel = { met: 'Met', projected: 'If in-progress pass', missing: 'Open' };
-  const pill = (st) => '<span class="pill ' + st + '">' + stLabel[st] + '</span>';
-  const selVal = (id) => (S.done[id] ? S.done[id] : S.ip.includes(id) ? 'ip' : '');
-  const selClass = (id) => {
-    const g = S.done[id];
-    if (g) return L.isPassing(g) ? 'st-met' : 'st-fail';
-    return S.ip.includes(id) ? 'st-ip' : '';
-  };
   function setCourse(id, v) {
     delete S.done[id];
     S.ip = S.ip.filter((x) => x !== id);
     if (v === 'ip') S.ip.push(id);
     else if (v) S.done[id] = v;
-  }
-  function courseSelect(id) {
-    const opts = [['', 'Not taken'], ['ip', 'In progress'], ...GRADES.map((g) => [g, g + (L.isPassing(g) ? '' : ' (below C)')])];
-    return '<select class="cs ' + selClass(id) + '" data-course="' + esc(id) + '" aria-label="Status of ' + esc(id) + '">' +
-      opts.map(([v, t]) => '<option value="' + esc(v) + '"' + (selVal(id) === v ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select>';
-  }
-  function courseRow(id, sub) {
-    const c = byId.get(id);
-    return '<li class="course"><a class="code" href="' + catalogLink(id) + '" target="_blank" rel="noopener">' + esc(id) + '</a>' +
-      '<span class="ctitle">' + esc(c.title) + '<small>' + c.units + ' unit' + (c.units === 1 ? '' : 's') + '</small></span>' +
-      courseSelect(id) + (sub ? '<span class="c-sub">' + esc(sub) + '</span>' : '') + '</li>';
-  }
-  function meter(label, val, proj, need, foot) {
-    const pct = (n) => Math.min(100, Math.round((n / need) * 100));
-    return '<div class="meter"><div class="meter-head"><span>' + esc(label) + '</span><b>' + val + ' / ' + need + '</b></div>' +
-      '<div class="bar" role="img" aria-label="' + esc(label) + ': ' + val + ' of ' + need + ' done, ' + proj + ' with in-progress"><i class="proj" style="width:' + pct(proj) + '%"></i><i class="have" style="width:' + pct(val) + '%"></i></div>' +
-      '<div class="meter-foot">' + esc(foot) + '</div></div>';
   }
   function say(msg) { const el = $('#setupMsg'); if (el) el.textContent = msg; }
 
@@ -92,7 +68,7 @@
 
   window.CT = {
     L, P, R, byId, GRADES, TERMS, UNIT_CHOICES, S, $, esc, catalogLink,
-    sanitize, save, setState, say, stLabel, pill, selVal, selClass, setCourse, courseSelect, courseRow, meter,
+    sanitize, save, setState, say, setCourse,
     register, renderAll, storageOk: () => storageOk
   };
 })();

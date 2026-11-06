@@ -32,7 +32,7 @@
       if (p.email) dl.push(['Email', p.email]);
       if (p.courses) dl.push(['Courses', p.courses.join(', ') + ' (office hours page)']);
       return '<article class="pcard"><div><h3>' + esc(p.name) + '</h3><p class="ptitle">' + esc(p.title) + '</p></div>' +
-        ((p.roles || []).length ? '<ul class="chips">' + p.roles.map((r) => '<li class="chip">' + esc(r) + '</li>').join('') + '</ul>' : '') +
+        ((p.roles || []).length ? '<ul class="chips-row">' + p.roles.map((r) => '<li class="chip">' + esc(r) + '</li>').join('') + '</ul>' : '') +
         (p.interests ? '<p class="pint">' + esc(p.interests) + '</p>' : '') +
         (dl.length ? '<dl class="pmeta">' + dl.map((r) => '<dt>' + r[0] + '</dt><dd>' + esc(r[1]) + '</dd>').join('') + '</dl>' : '') +
         '<p class="hint"><a href="' + esc(p.url) + '" target="_blank" rel="noopener">CSULB profile</a></p>' + ratingHtml(p) + '</article>';

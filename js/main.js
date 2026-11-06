@@ -2,5 +2,6 @@
 (function () {
   const CT = window.CT;
   CT.renderAll();
+  CT.showCurrent();
   if (!CT.storageOk()) CT.say('Your browser blocked local storage, so progress will not be saved. Use Export to keep it.');
 })();

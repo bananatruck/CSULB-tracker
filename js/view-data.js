@@ -10,7 +10,10 @@
     save();
     CT.renderAll();
   });
-  document.addEventListener('ct:reset', () => { units.value = S.otherUnits; });
+  const force = $('#forceOpen');
+  force.checked = S.forceOpen;
+  force.addEventListener('change', () => { S.forceOpen = force.checked; save(); CT.renderAll(); });
+  document.addEventListener('ct:reset', () => { units.value = S.otherUnits; force.checked = S.forceOpen; });
 
   $('#exportBtn').addEventListener('click', () => {
     const blob = new Blob([JSON.stringify({ app: 'CSULB-tracker', version: 1, catalog: '2023-2024', state: S }, null, 2)], { type: 'application/json' });
