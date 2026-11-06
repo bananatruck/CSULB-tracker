@@ -19,9 +19,9 @@ const finishedState = (track = 'software') => {
   return s;
 };
 
-test('data: course list has the 59 catalog courses and unique ids', () => {
-  assert.equal(courses.length, 59);
-  assert.equal(new Set(courses.map((c) => c.id)).size, 59);
+test('data: course list has the 61 catalog courses and unique ids', () => {
+  assert.equal(courses.length, 61);
+  assert.equal(new Set(courses.map((c) => c.id)).size, 61);
 });
 
 test('data: every course named in a requirement exists', () => {
@@ -128,9 +128,9 @@ test('eligibility: CECS 326 needs CECS 325 and CECS 341', () => {
 });
 
 test('eligibility: corequisites can be taken in the same term', () => {
-  const have = new Set(['CECS 343', 'ENGR 350']);
+  const have = new Set(['CECS 343']);
   assert.equal(L.eligible('CECS 491A', have, [], 100), false);
-  assert.equal(L.eligible('CECS 491A', have, ['CECS 323', 'CECS 328'], 100), true);
+  assert.equal(L.eligible('CECS 491A', have, ['CECS 328', 'ENGR 350'], 100), true);
 });
 
 test('eligibility: 60-unit rule applies to ENGR 350', () => {
@@ -158,11 +158,11 @@ test('recommend: never schedules a course before its prerequisites and respects 
   assert.equal(r.blocked.length, 0);
 });
 
-test('recommend: ML track pulls in E E 381 because CECS 456 needs it', () => {
+test('recommend: ML track schedules a stats course because CECS 456 needs one', () => {
   const s = L.emptyState();
   s.track = 'ml';
   const r = L.recommend(s);
-  assert.ok(r.wanted.some((w) => w.id === 'E E 381'));
+  assert.ok(r.wanted.some((w) => w.id === 'E E 381' || w.id === 'CECS 381'));
   assert.ok(r.wanted.some((w) => w.id === 'CECS 456'));
 });
 
@@ -293,4 +293,31 @@ test('lock: a course blocked only by the 60-unit rule is locked, not waiting', (
   const r = L.lock('ENGR 350', L.flowCtx(stateWith([], [], { otherUnits: 10 })));
   assert.equal(r.open, false);
   assert.equal(r.waiting, false);
+});
+
+// ---------- 2026-27 catalog changes ----------
+test('2026-27: CECS 229 needs only CECS 228, and CECS 342 needs CECS 325', () => {
+  assert.equal(L.holds(byId.get('CECS 229').pre, new Set(['CECS 228'])), true);
+  assert.equal(L.holds(byId.get('CECS 342').pre, new Set(['CECS 325'])), true);
+  assert.equal(L.holds(byId.get('CECS 342').pre, new Set(['CECS 328'])), false);
+});
+
+test('2026-27: CECS 456 and CECS 458 accept CECS 381 or E E 381', () => {
+  for (const id of ['CECS 456', 'CECS 458']) {
+    assert.equal(L.holds(byId.get(id).pre, new Set(['CECS 381'])), true, id);
+    assert.equal(L.holds(byId.get(id).pre, new Set(['E E 381'])), true, id);
+    assert.equal(L.holds(byId.get(id).pre, new Set()), false, id);
+  }
+});
+
+test('2026-27: CECS 479 and CECS 458 are in their focus areas and the shared electives', () => {
+  assert.ok(R.tracks.cyber.options.includes('CECS 479'));
+  assert.ok(R.tracks.ml.options.includes('CECS 458'));
+  assert.ok(R.sharedElectives.includes('CECS 479') && R.sharedElectives.includes('CECS 458'));
+});
+
+test('2026-27: CECS 491A needs CECS 343 first, with CECS 328 and ENGR 350 alongside', () => {
+  const c = byId.get('CECS 491A');
+  assert.equal(L.exprText(c.pre), 'CECS 343');
+  assert.equal(L.exprText(c.co), 'CECS 328 and ENGR 350');
 });

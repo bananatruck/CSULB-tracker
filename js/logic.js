@@ -245,10 +245,8 @@
     R.upperCore.forEach((id) => add(id, 'upper', 'Required upper-division core course'));
     for (const p of R.pickOne) {
       if (p.options.some((id) => have.has(id))) continue;
-      let pick = best(p.options)[0];
-      if (p.key === 'stats' && state.track === 'ml') pick = 'E E 381';
-      if (p.key === 'stats' && state.track === 'ml') add(pick, 'pick', 'Counts as your stats pick, and CECS 456 (required for ML and AI) needs E E 381');
-      else add(pick, 'pick', 'You still need one of ' + p.label);
+      const pick = best(p.options)[0];
+      add(pick, 'pick', p.key === 'stats' && state.track === 'ml' ? 'Your stats pick, and it opens CECS 456 (ML and AI)' : 'You still need one of ' + p.label);
     }
     // science
     const sciHave = (set) => sumUnits(R.science.pool.filter((id) => set.has(id)));

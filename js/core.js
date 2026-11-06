@@ -9,7 +9,7 @@
   const UNIT_CHOICES = [6, 9, 12, 15, 18];
   const $ = (s, el = document) => el.querySelector(s);
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const catalogLink = (id) => 'https://csulb.catalog.acalog.com/preview_course_nopop.php?catoid=8&coid=' + byId.get(id).coid;
+  const catalogLink = (id) => 'https://csulb.catalog.acalog.com/preview_course_nopop.php?catoid=12&coid=' + byId.get(id).coid;
 
   // ---------- state ----------
   // Anything read from storage or an imported file is whitelisted field by field.
